@@ -1,0 +1,390 @@
+{
+    "name": "Transform Your Selfies into 3D Figurines with Nano Banana AI",
+    "nodes": [
+        {
+            "parameters": {
+                "content": "# Transform Your Selfies into 3D Figurines with Nano Banana AI\n\n## Overview\nThis workflow utilizes the Defapi API with Google's **Nano Banana AI** model to transform your selfies into stunning **3D figurines**, **action figures**, and collectible merchandise designs. Simply upload a selfie photo, provide a creative prompt describing your desired **3D figurine** or **action figure** design, and watch as AI generates professional-quality product visualizations.\n\n**Input:** Your selfie photo + creative prompt + API key  \n**Output:** AI-generated **3D figurine** and **action figure** designs perfect for collectibles, merchandise, and product visualization\n\nUsers can interact through a simple form, providing a text prompt describing the desired creative scene, a product image URL, and their API key. The system automatically submits the request to the Defapi API, monitors the generation status in real time, and retrieves the final creative image output. This solution is ideal for marketers, product designers, e-commerce businesses, and content creators who want to quickly generate compelling product advertisements and creative visuals with minimal setup. Perfect for creating **3D figurines** and collectible merchandise designs.\n\n\n## Prerequisites\n- A Defapi account and API key: Sign up at [Defapi.org](https://defapi.org/model/google/nano-banana) to obtain your API key.\n- An active n8n instance (cloud or self-hosted) with HTTP Request and form submission capabilities.\n- Basic knowledge of AI prompts for product creative generation to achieve optimal results, especially for **3D figurines** and collectible designs.\n  - Example prompt: Create a 1/7 scale commercialized **3D figurine** of the characters in the picture, in a realistic style, in a real environment. The **figurine** is placed on a computer desk. The **figurine** has a round transparent acrylic base, with no text on the base. The content on the computer screen is the Zbrush modeling process of this **figurine**. Next to the computer screen is a packaging box with rounded corner design and a transparent front window, the figure inside is clearly visible.\n\n- A product image for creative generation.\n- **Important Note**: Avoid using dark photos as input, as the generated **3D figurine** will also appear dark.\n\n## Setup Instructions\n1.  **Obtain API Key**: Register at Defapi.org and generate your API key. Store it securely—do not share it publicly.\n2.  **Configure the Form**: In the \"Upload Image\" form trigger node, ensure the following fields are set up: Image (file upload), API Key (text field), and Prompt (text field).\n3.  **Test the Workflow**:\n    - Click \"Execute Workflow\" in n8n.\n    - Access the generated form URL, upload your product image, enter your prompt, and provide your API key.\n    - The workflow will process the image through the \"Convert to JSON\" node, then send the request to the Defapi API.\n    - The system will wait 10 seconds and then poll the API status until the image generation is complete.\n4.  **Handle Outputs**: The final \"Format and Display Image Results\" node formats and displays the generated creative image URL for download or embedding.\n\n## Workflow Structure\nThe workflow consists of the following nodes:\n1. **Upload Image** (Form Trigger) - Collects user input: image file, API key, and prompt\n2. **Convert to JSON** (Code Node) - Converts uploaded image to base64 and formats data\n3. **Send Image Generation Request to Defapi.org API** (HTTP Request) - Submits generation request\n4. **Wait for Image Processing Completion** (Wait Node) - Waits 10 seconds before checking status\n5. **Obtain the generated status** (HTTP Request) - Polls API for completion status\n6. **Check if Image Generation is Complete** (IF Node) - Checks if status equals 'success'\n7. **Format and Display Image Results** (Set Node) - Formats final image URL output\n\n## Technical Details\n- **API Endpoint**: `https://api.defapi.org/api/image/gen` (POST request)\n- **Model Used**: `google/nano-banana` (**Nano Banana AI**)\n- **Status Check Endpoint**: `https://api.defapi.org/api/task/query` (GET request)\n- **Wait Time**: 10 seconds between status checks\n- **Image Processing**: Uploaded images are converted to base64 format for API submission\n- **Authentication**: Bearer token authentication using the provided API key\n- **Specialized For**: **3D figurines**, collectible merchandise, and product visualization\n\n## Customization Tips\n- **Enhance Prompts**: Include specifics like scene setting, lighting, style (e.g., realistic, artistic, cinematic), product placement, and visual elements to improve AI creative image quality. For **3D figurines**, specify scale, materials, and display context.\n- **Form Fields**: The form accepts image files (image/*), API key (text), and prompt (text) as required fields.\n- **Error Handling**: The workflow includes conditional logic to check for successful completion before displaying results.\n- **Best Practices for **Nano Banana AI****: Use detailed descriptions for **figurine** designs, specify lighting conditions, and include environmental context for realistic **3D figurine** generation.\n- **Photo Quality Tips**: Use well-lit photos for best results. Avoid dark images as they will make the generated **3D figurine** appear dark too.\n",
+                "height": 760,
+                "width": 780,
+                "color": 3
+            },
+            "id": "7588ffac-cdd7-45c7-997f-1eadce370b18",
+            "name": "Sticky Note3",
+            "type": "n8n-nodes-base.stickyNote",
+            "position": [
+                0,
+                0
+            ],
+            "typeVersion": 1
+        },
+        {
+            "parameters": {
+                "url": "https://api.defapi.org/api/task/query",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "task_id",
+                            "value": "={{$json.data.task_id}}"
+                        }
+                    ]
+                },
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        },
+                        {
+                            "name": "Authorization",
+                            "value": "=Bearer {{ $('Convert to JSON').item.json.api_key }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "bb5f5ef0-1d51-4337-a72b-c61af6b79856",
+            "name": "Obtain the generated status",
+            "type": "n8n-nodes-base.httpRequest",
+            "position": [
+                448,
+                832
+            ],
+            "typeVersion": 4.2
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://api.defapi.org/api/image/gen",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        },
+                        {
+                            "name": "Authorization",
+                            "value": "=Bearer {{ $json.api_key }}"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"prompt\": \"{{$json.prompt}}\",\n  \"model\": \"google/nano-banana\",\n  \"images\": [\"{{ $json.img_url }}\"]\n}",
+                "options": {}
+            },
+            "id": "651b824c-faf4-434b-ab22-9cf5f81eef51",
+            "name": "Send Image Generation Request to Defapi.org API",
+            "type": "n8n-nodes-base.httpRequest",
+            "position": [
+                16,
+                832
+            ],
+            "typeVersion": 4.2
+        },
+        {
+            "parameters": {
+                "amount": 10
+            },
+            "id": "06847ab9-5b6e-42a6-a9ed-2a579dd8d5fd",
+            "name": "Wait for Image Processing Completion",
+            "type": "n8n-nodes-base.wait",
+            "position": [
+                256,
+                832
+            ],
+            "webhookId": "bb6c2821-9586-44b7-8606-2ee69a77ed75",
+            "typeVersion": 1.1
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "version": 2,
+                        "leftValue": "",
+                        "caseSensitive": true,
+                        "typeValidation": "loose"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                        {
+                            "id": "db9a5dec-997b-4c3f-9582-37c9bbeb19ff",
+                            "operator": {
+                                "name": "filter.operator.equals",
+                                "type": "string",
+                                "operation": "equals"
+                            },
+                            "leftValue": "=true",
+                            "rightValue": "={{ $json.data.status == 'success' }}"
+                        }
+                    ]
+                },
+                "looseTypeValidation": true,
+                "options": {}
+            },
+            "id": "c259ec52-db1b-47d9-acdb-199434385bfe",
+            "name": "Check if Image Generation is Complete",
+            "type": "n8n-nodes-base.if",
+            "position": [
+                640,
+                832
+            ],
+            "typeVersion": 2.2
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "fa5f375f-cddc-4f7b-a018-67c28015d18b",
+                            "name": "image_url",
+                            "type": "string",
+                            "value": "={{$json.data.result[0].image}}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "d088ccdd-53f0-4eb8-89a1-07cbeff0eeb7",
+            "name": "Format and Display Image Results",
+            "type": "n8n-nodes-base.set",
+            "position": [
+                816,
+                816
+            ],
+            "typeVersion": 3.4
+        },
+        {
+            "parameters": {
+                "content": "## Input Photo\n![Product](https://i.imgur.com/s9KaIO2.png)",
+                "height": 576,
+                "width": 400,
+                "color": 4
+            },
+            "id": "f8cded4b-ad12-43a3-903c-000c5063b277",
+            "name": "Sticky Note2",
+            "type": "n8n-nodes-base.stickyNote",
+            "position": [
+                -240,
+                1056
+            ],
+            "typeVersion": 1
+        },
+        {
+            "parameters": {
+                "content": "## Result Image\n![Creative](https://i.imgur.com/WoypJlD.png)",
+                "height": 608,
+                "width": 416
+            },
+            "id": "9739f6a6-1ec1-4eb6-833e-dd97d35d2f9a",
+            "name": "Sticky Note4",
+            "type": "n8n-nodes-base.stickyNote",
+            "position": [
+                336,
+                1040
+            ],
+            "typeVersion": 1
+        },
+        {
+            "parameters": {
+                "formTitle": "Upload Image",
+                "formFields": {
+                    "values": [
+                        {
+                            "fieldLabel": "Image",
+                            "fieldType": "file",
+                            "multipleFiles": false,
+                            "acceptFileTypes": "image/*",
+                            "requiredField": true
+                        },
+                        {
+                            "fieldLabel": "API Key",
+                            "requiredField": true
+                        },
+                        {
+                            "fieldLabel": "Prompt",
+                            "requiredField": true
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "765bd973-d734-4cd5-931e-cfacbe3be3c6",
+            "name": "Upload Image",
+            "type": "n8n-nodes-base.formTrigger",
+            "position": [
+                -336,
+                688
+            ],
+            "webhookId": "254a1336-57d2-4ba0-93e1-e8460fc94f00",
+            "typeVersion": 2.3
+        },
+        {
+            "parameters": {
+                "jsCode": "/**\n * Encodes multiple binary files from an n8n input item into Base64 strings.\n *\n * This code assumes it is running in an n8n \"Code\" or \"Function\" node\n * where 'this' refers to the node's context and 'helpers' are available.\n *\n * @returns {object} An object containing an array of file objects,\n * each with a 'path' and 'data' (Base64 string).\n */\nconst results = {};\n\nconst bin = $input.first().binary['Image'];\n\n// Use n8n's helper function to get the file buffer.\nconst binBuffer = await this.helpers.getBinaryDataBuffer(0, 'Image');\n\n// Push a new object to the results array.\nresults.img_url = `data:${bin.mimeType};base64,${Buffer.from(binBuffer).toString('base64')}`\nresults.api_key = $input.first().json['API Key']\nresults.prompt = $input.first().json['Prompt']\n\n// Return the final object in the expected format for the next node.\nreturn results;\n"
+            },
+            "id": "6d459be1-be09-49f9-a19d-74d7cddb845c",
+            "name": "Convert to JSON",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                -128,
+                688
+            ],
+            "typeVersion": 2
+        },
+        {
+            "parameters": {
+                "content": "## Example prompt\nCreate a 1/7 scale commercialized figurine of the characters in the picture, in a realistic style, in a real environment. The figurine is placed on a computer desk. The figurine has a round transparent acrylic base, with no text on the base. The content on the computer screen is the Zbrush modeling process of this figurine.Next to the computer screen is a packaging box with rounded corner design and a transparent front window, the figure inside is clearly visible."
+            },
+            "id": "4aeb5723-a602-41fd-a215-9396dfef57e1",
+            "name": "Sticky Note",
+            "type": "n8n-nodes-base.stickyNote",
+            "position": [
+                -416,
+                816
+            ],
+            "typeVersion": 1
+        },
+        {
+            "parameters": {
+                "resource": "image",
+                "model": "gpt-image-1",
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.openAi",
+            "typeVersion": 1.8,
+            "position": [
+                960,
+                624
+            ],
+            "id": "b4a66e31-1500-4b10-94fd-0aba16226894",
+            "name": "Generate an image",
+            "credentials": {
+                "openAiApi": {
+                    "id": "X21SUMDcN0yh0Vdm",
+                    "name": "OpenAi account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "resource": "image",
+                "operation": "edit",
+                "images": {
+                    "values": [
+                        {}
+                    ]
+                },
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.googleGemini",
+            "typeVersion": 1,
+            "position": [
+                1200,
+                624
+            ],
+            "id": "e018a9ad-21e9-49c8-9346-cf394db248ed",
+            "name": "Edit an image"
+        }
+    ],
+    "pinData": {},
+    "connections": {
+        "Upload Image": {
+            "main": [
+                [
+                    {
+                        "node": "Convert to JSON",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Convert to JSON": {
+            "main": [
+                [
+                    {
+                        "node": "Send Image Generation Request to Defapi.org API",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Obtain the generated status": {
+            "main": [
+                [
+                    {
+                        "node": "Check if Image Generation is Complete",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Wait for Image Processing Completion": {
+            "main": [
+                [
+                    {
+                        "node": "Obtain the generated status",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check if Image Generation is Complete": {
+            "main": [
+                [
+                    {
+                        "node": "Format and Display Image Results",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Wait for Image Processing Completion",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send Image Generation Request to Defapi.org API": {
+            "main": [
+                [
+                    {
+                        "node": "Wait for Image Processing Completion",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Generate an image": {
+            "main": [
+                [
+                    {
+                        "node": "Edit an image",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "active": false,
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "versionId": "dd09c2ac-f449-4cdc-ba8a-fad4926e5761",
+    "meta": {
+        "templateCredsSetupCompleted": true,
+        "instanceId": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "id": "PrSkVjQdpaFHiqYC",
+    "tags": []
+}
