@@ -1,5 +1,5 @@
 {
-    "name": "Transform Your Selfies into 3D Figurines with Nano Banana AI",
+    "name": "research_schematic_agent",
     "nodes": [
         {
             "parameters": {
@@ -23,45 +23,45 @@
                 },
                 "options": {}
             },
-            "id": "ad5fb548-513e-4994-8b00-4918fb6df04b",
+            "id": "f6a38d3b-9dcc-4b8b-a273-79f6beccf4bc",
             "name": "Form Input",
             "type": "n8n-nodes-base.formTrigger",
             "position": [
-                -928,
-                288
+                -2416,
+                -48
             ],
             "typeVersion": 2.3,
             "webhookId": "a25c21ac-31df-4127-a398-9d9b5d25e970"
         },
         {
             "parameters": {
-                "jsCode": "const raw = $json[\"text\"] ?? $json[\"message\"] ?? JSON.stringify($json);\n// Try to parse JSON from Gemini text output\nlet parsed;\ntry { parsed = JSON.parse(raw); } catch { parsed = { visual_prompt: raw, negative_prompt: '', layout_constraints: '', style: '', icons: [] }; }\nreturn parsed;"
+                "jsCode": "// Normalize LLM output into a stable schema for image prompts\n// Always return: { visual_prompt: string, negative_prompt: string, layout_constraints: string, style: string, icons: string[] }\n\nfunction toStringSafe(value) {\n  if (value == null) return '';\n  if (typeof value === 'string') return value;\n  if (typeof value === 'object') {\n    if (typeof value.content === 'string') return value.content;\n    try { return JSON.stringify(value); } catch { return String(value); }\n  }\n  return String(value);\n}\n\nconst primaryText = ($json.text ?? $json.message?.content ?? $json.message ?? $json.choices?.[0]?.message?.content ?? $json.data?.[0]?.text ?? '');\nconst formInput = ($items('Form Input', 0, 0)?.json) || {};\n\nlet objectCandidate = null;\nif (typeof primaryText === 'string' && primaryText.trim()) {\n  try { objectCandidate = JSON.parse(primaryText); } catch (e) {}\n}\n\nconst result = {\n  visual_prompt: '',\n  negative_prompt: '',\n  layout_constraints: '',\n  style: '',\n  icons: []\n};\n\nif (objectCandidate && typeof objectCandidate === 'object' && !Array.isArray(objectCandidate)) {\n  result.visual_prompt = toStringSafe(objectCandidate.visual_prompt ?? objectCandidate.prompt ?? objectCandidate.description ?? '');\n  result.negative_prompt = toStringSafe(objectCandidate.negative_prompt ?? '');\n  result.layout_constraints = toStringSafe(objectCandidate.layout_constraints ?? objectCandidate.layout ?? '');\n  result.style = toStringSafe(objectCandidate.style ?? '');\n  const icons = objectCandidate.icons;\n  result.icons = Array.isArray(icons) ? icons.map(toStringSafe).filter(Boolean) : [];\n} else {\n  result.visual_prompt = toStringSafe(primaryText).trim();\n}\n\nif (!result.visual_prompt) {\n  result.visual_prompt = toStringSafe(formInput['Research Description']).trim();\n}\n\nreturn result;"
             },
-            "id": "7cf26004-c8c4-4177-932f-01aa21fe04d9",
+            "id": "da85a208-6dc5-4d74-81f5-567eb3e7cb78",
             "name": "Parse Optimized JSON",
             "type": "n8n-nodes-base.code",
             "position": [
-                -432,
-                288
+                -1872,
+                -48
             ],
             "typeVersion": 2
         },
         {
             "parameters": {
                 "resource": "image",
-                "model": "=gpt-4o-image",
+                "model": "gpt-image-1",
+                "prompt": "={{ $json.visual_prompt }}",
                 "options": {
-                    "size": "1024x1024",
-                    "prompt": "={{$json.visual_prompt}}\nStyle: {{$json.style}}\nLayout: {{$json.layout_constraints}}\nIcons: {{ Array.isArray($json.icons) ? $json.icons.join(', ') : $json.icons }}\nNegative: {{$json.negative_prompt}}"
+                    "size": "1024x1024"
                 }
             },
             "type": "@n8n/n8n-nodes-langchain.openAi",
             "typeVersion": 1.8,
             "position": [
-                -160,
-                288
+                -1648,
+                -48
             ],
-            "id": "905ab4b9-95e2-46c7-b286-b13c9b5b4b6c",
+            "id": "041eb0da-bd13-4945-b5af-a1dd032139ed",
             "name": "Generate Image (gpt-image-1)",
             "credentials": {
                 "openAiApi": {
@@ -69,6 +69,19 @@
                     "name": "OpenAi account 2"
                 }
             }
+        },
+        {
+            "parameters": {
+                "jsCode": "// Convert binary 'data' to data URL in json.image_url for downstream usage.\nconst binary = $input.first().binary?.data;\nif (!binary) {\n  return { image_url: $json.image_url || $json.url || '' };\n}\nconst buffer = await this.helpers.getBinaryDataBuffer(0, 'data');\nconst mime = binary.mimeType || 'image/png';\nreturn { image_url: `data:${mime};base64,${buffer.toString('base64')}` };\n"
+            },
+            "id": "2efd4d04-6228-4b78-93d8-69fa10fa1df3",
+            "name": "Binary to Data URL",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                -1456,
+                -48
+            ],
+            "typeVersion": 2
         },
         {
             "parameters": {
@@ -84,25 +97,45 @@
                 },
                 "options": {}
             },
-            "id": "753f1ce0-32fe-4d32-8b6e-c70872116226",
+            "id": "4fa87112-e293-4679-af61-1889ba0d50f0",
             "name": "Extract Image URL",
             "type": "n8n-nodes-base.set",
             "position": [
-                128,
-                288
+                -1280,
+                -48
             ],
             "typeVersion": 3.4
         },
         {
             "parameters": {
-                "amount": 180
+                "resume": "form",
+                "formTitle": "是否满意？",
+                "formFields": {
+                    "values": [
+                        {
+                            "fieldLabel": "是否要调整",
+                            "fieldType": "dropdown",
+                            "fieldOptions": {
+                                "values": [
+                                    {
+                                        "option": "需要调整"
+                                    },
+                                    {
+                                        "option": "无需调整"
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "options": {}
             },
-            "id": "ac14ce53-bee7-465e-b0bf-df402cadbd01",
+            "id": "ff244d5b-8d24-4e33-ae2b-5cbabbfd047d",
             "name": "Wait for Feedback",
             "type": "n8n-nodes-base.wait",
             "position": [
-                400,
-                288
+                -1088,
+                -48
             ],
             "webhookId": "{{ $json.id || 'research-schematic-feedback' }}",
             "typeVersion": 1.1
@@ -116,29 +149,28 @@
                         "caseSensitive": true,
                         "typeValidation": "loose"
                     },
-                    "combinator": "and",
                     "conditions": [
                         {
                             "id": "c-approved",
                             "operator": {
-                                "name": "filter.operator.equals",
-                                "type": "boolean",
+                                "type": "string",
                                 "operation": "equals"
                             },
-                            "leftValue": "={{$json.approved}}",
-                            "rightValue": true
+                            "leftValue": "={{ $json[\"是否要调整\"] }}",
+                            "rightValue": "无需调整"
                         }
-                    ]
+                    ],
+                    "combinator": "and"
                 },
                 "looseTypeValidation": true,
                 "options": {}
             },
-            "id": "5acfb500-4974-4631-b8e5-934db93e518c",
+            "id": "cfe28871-c652-4fb9-ade3-e0deff7348f1",
             "name": "Approved?",
             "type": "n8n-nodes-base.if",
             "position": [
-                640,
-                288
+                -880,
+                -48
             ],
             "typeVersion": 2.2
         },
@@ -147,90 +179,34 @@
                 "url": "={{$json.image_url}}",
                 "options": {}
             },
-            "id": "0d5c0809-d6d6-40eb-8574-75abd0ba8d96",
+            "id": "eebfeeab-e8c1-411c-bb1d-39a82c751e4a",
             "name": "Download Current Image",
             "type": "n8n-nodes-base.httpRequest",
             "position": [
-                1280,
-                272
+                -720,
+                -48
             ],
             "typeVersion": 4.2
         },
         {
             "parameters": {
-                "assignments": {
-                    "assignments": [
-                        {
-                            "id": "a-loop",
-                            "name": "loop_count",
-                            "type": "number",
-                            "value": "={{($json.loop_count || 0) + 1}}"
-                        }
-                    ]
-                },
-                "options": {}
-            },
-            "id": "23599632-6469-4eba-b638-e5906e571c86",
-            "name": "Increase Loop Count",
-            "type": "n8n-nodes-base.set",
-            "position": [
-                688,
-                560
-            ],
-            "typeVersion": 3.4
-        },
-        {
-            "parameters": {
-                "conditions": {
-                    "options": {
-                        "version": 2,
-                        "leftValue": "",
-                        "caseSensitive": true,
-                        "typeValidation": "loose"
-                    },
-                    "combinator": "and",
-                    "conditions": [
-                        {
-                            "id": "c-max-loop",
-                            "operator": {
-                                "name": "filter.operator.greaterEqual",
-                                "type": "number",
-                                "operation": "greaterEqual"
-                            },
-                            "leftValue": "={{$json.loop_count}}",
-                            "rightValue": 5
-                        }
-                    ]
-                },
-                "looseTypeValidation": true,
-                "options": {}
-            },
-            "id": "a6d44fba-7bd2-4e03-8125-6c371820f9b8",
-            "name": "Reached Max Iterations?",
-            "type": "n8n-nodes-base.if",
-            "position": [
-                912,
-                560
-            ],
-            "typeVersion": 2.2
-        },
-        {
-            "parameters": {
-                "resource": "text",
                 "modelId": {
                     "__rl": true,
-                    "value": "=gemini-2.5-flash",
+                    "value": "gpt-5",
                     "mode": "id"
                 },
                 "messages": {
                     "values": [
                         {
-                            "type": "system",
-                            "text": "你是学术可视化设计师。把用户的科研方案描述转为\"专业学术示意图\"视觉提示。请输出 JSON：{ visual_prompt, negative_prompt, layout_constraints, style, icons }，并严格只返回该 JSON。约束：Serif 字体；白底；细线；冷色（蓝/灰/浅青）；向量风格；一致描边；最小阴影。横向三阶段：1) Structured Extraction（左→右）2) AI Diagnosis + Human Revision（上→下）3) Text Recomposition（左→右）。禁用：霓虹、无衬线、重3D、投影、照片纹理。"
+                            "content": "You are a senior academic visualization designer. You must return ONLY strict JSON with fields { visual_prompt, negative_prompt, layout_constraints, style, icons }. No extra text.",
+                            "role": "system"
                         },
                         {
-                            "type": "user",
-                            "text": "用户方案：{{$json['Research Description']}}\n偏好：{{$json.StylePrefs}}\n负面：{{$json.Negatives}}\n请只返回 JSON：{ \"visual_prompt\", \"negative_prompt\", \"layout_constraints\", \"style\", \"icons\" }"
+                            "content": "\"visual_prompt\": \"Professional academic schematic, serif font for all labels (Times/Georgia-like), white background, thin crisp lines, high-resolution vector feel. Main palette: clear blues and neutral grays. Use a soft but distinct orange as an accent color for fallback/retry. Clear arrows for information flow; minimal icons; no shadows. The diagram shows an AI Gateway in three vertical columns (left to right). Column 1: Client Application with a terminal/editor icon; a request packet labeled `Request: { model: \"critical-task-model\" }` and a solid blue arrow labeled API Call to the Gateway. Column 2: AI Gateway enclosed in a light gray box with (1) Model Abstraction & Routing mapping: \"critical-task-model\" -> [Gemini-1.5, GPT-4o, Claude-3]; (2) Fallback Waterfall Execution: Attempt 1 Gemini-1.5 Pro blue arrow to Gemini API; dashed orange arrow back labeled Error/Timeout to Attempt 2 GPT-4o; green success arrow from OpenAI API labeled 200 OK returning to Client; optional Attempt 3 Claude-3 Sonnet greyed out. Column 3: Upstream LLM Providers with three simple cloud/API icons.\",\n  \"negative_prompt\": \"no neon, no sans-serif, no heavy 3D, no drop shadows, no photo textures\",\n  \"layout_constraints\": \"Three columns left-to-right; consistent spacing and arrow styles; legend bottom-right; accent orange only for fallback arrows.\",\n  \"style\": \"serif labels, white canvas, thin lines, cool blue/gray palette, vector, minimalistic, orange accent for fallback\",\n  \"icons\": [\"terminal\", \"packet\", \"gear\", \"cloud\", \"arrow\", \"check\"]",
+                            "role": "assistant"
+                        },
+                        {
+                            "content": "=现在想针对这个文本{{ $json[\"Research Description\"] }}生成一个提示，请用简体中文生成"
                         }
                     ]
                 },
@@ -239,38 +215,63 @@
             "type": "@n8n/n8n-nodes-langchain.openAi",
             "typeVersion": 1.8,
             "position": [
-                -672,
-                288
+                -2224,
+                -48
             ],
-            "id": "a956ec3d-4199-42c1-85f8-d30011df64af",
+            "id": "ff5a16d1-7c66-4edd-bfc1-5a700affd10f",
             "name": "Message a model",
             "credentials": {
                 "openAiApi": {
-                    "id": "RVnvsDDZCDRfO5K9",
-                    "name": "OpenAi account 3"
+                    "id": "aop9amUFVOOwigGz",
+                    "name": "OpenAi account 2"
                 }
             }
         },
         {
             "parameters": {
                 "resource": "image",
-                "model": "=gemini-2.5-flash-image",
+                "model": "gpt-image-1",
+                "prompt": "=请根据一下建议，{{ $json[\"请问如何调整\"] }}，调整一下这个图片{{ $('Extract Image URL').item.json.image_url }}",
                 "options": {}
             },
             "type": "@n8n/n8n-nodes-langchain.openAi",
             "typeVersion": 1.8,
             "position": [
-                496,
-                560
+                -448,
+                192
             ],
-            "id": "ed5edb43-89d8-4c42-80e1-06a3d6b1747f",
+            "id": "fb7dd85d-1229-49cd-833b-eaf5c1c9b1ff",
             "name": "Generate an image",
             "credentials": {
                 "openAiApi": {
-                    "id": "RVnvsDDZCDRfO5K9",
-                    "name": "OpenAi account 3"
+                    "id": "aop9amUFVOOwigGz",
+                    "name": "OpenAi account 2"
                 }
             }
+        },
+        {
+            "parameters": {
+                "resume": "form",
+                "formTitle": "调整建议",
+                "formFields": {
+                    "values": [
+                        {
+                            "fieldLabel": "请问如何调整",
+                            "requiredField": true
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.wait",
+            "typeVersion": 1.1,
+            "position": [
+                -688,
+                192
+            ],
+            "id": "53238195-52e2-40b8-9dcf-b3ca13249240",
+            "name": "Wait",
+            "webhookId": "7ac0eb5b-da04-474f-9864-23c1761ac3ac"
         }
     ],
     "pinData": {},
@@ -298,6 +299,17 @@
             ]
         },
         "Generate Image (gpt-image-1)": {
+            "main": [
+                [
+                    {
+                        "node": "Binary to Data URL",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Binary to Data URL": {
             "main": [
                 [
                     {
@@ -341,23 +353,7 @@
                 ],
                 [
                     {
-                        "node": "Generate an image",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Download Current Image": {
-            "main": [
-                []
-            ]
-        },
-        "Increase Loop Count": {
-            "main": [
-                [
-                    {
-                        "node": "Reached Max Iterations?",
+                        "node": "Wait",
                         "type": "main",
                         "index": 0
                     }
@@ -375,29 +371,22 @@
                 ]
             ]
         },
-        "Reached Max Iterations?": {
+        "Generate an image": {
             "main": [
                 [
                     {
-                        "node": "Download Current Image",
-                        "type": "main",
-                        "index": 0
-                    }
-                ],
-                [
-                    {
-                        "node": "Wait for Feedback",
+                        "node": "Extract Image URL",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         },
-        "Generate an image": {
+        "Wait": {
             "main": [
                 [
                     {
-                        "node": "Increase Loop Count",
+                        "node": "Generate an image",
                         "type": "main",
                         "index": 0
                     }
@@ -409,11 +398,11 @@
     "settings": {
         "executionOrder": "v1"
     },
-    "versionId": "dd09c2ac-f449-4cdc-ba8a-fad4926e5761",
+    "versionId": "6f69e1a3-6db5-44d2-9d7b-0617f89dfd06",
     "meta": {
         "templateCredsSetupCompleted": true,
         "instanceId": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
-    "id": "PrSkVjQdpaFHiqYC",
+    "id": "qmhVxwRAPJZwDt07",
     "tags": []
 }
